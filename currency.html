@@ -1,0 +1,1861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="Live Currency Converter with DSA implementation - Stack, Queue, Sorting, Searching"/>
+  <meta name="keywords" content="currency converter, live rates, DSA, stack, queue, sorting, searching"/>
+  <title>FX Live — Currency Converter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg-base:      #070b14;
+      --bg-card:      #0d1422;
+      --bg-glass:     rgba(255,255,255,0.04);
+      --border:       rgba(255,215,100,0.12);
+      --gold:         #f5c842;
+      --gold-dim:     #c9a22a;
+      --gold-glow:    rgba(245,200,66,0.18);
+      --teal:         #00e5c3;
+      --teal-dim:     rgba(0,229,195,0.12);
+      --red:          #ff4d6d;
+      --green:        #39ff8f;
+      --text-primary: #eef0f8;
+      --text-secondary:#8a92aa;
+      --text-muted:   #4a5068;
+      --font-display: 'Playfair Display', serif;
+      --font-mono:    'JetBrains Mono', monospace;
+      --font-body:    'DM Sans', sans-serif;
+      --radius:       14px;
+      --radius-sm:    8px;
+      --transition:   cubic-bezier(.4,0,.2,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── ANIMATED BACKGROUND ─────────────────────── */
+    body::before {
+      content:'';
+      position:fixed; inset:0; z-index:0;
+      background:
+        radial-gradient(ellipse 800px 600px at 10% 20%, rgba(245,200,66,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 600px 800px at 85% 70%, rgba(0,229,195,0.05) 0%, transparent 60%),
+        radial-gradient(ellipse 400px 400px at 50% 50%, rgba(255,77,109,0.03) 0%, transparent 70%);
+      pointer-events:none;
+    }
+
+    /* Grid overlay */
+    body::after {
+      content:'';
+      position:fixed; inset:0; z-index:0;
+      background-image:
+        linear-gradient(rgba(245,200,66,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(245,200,66,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events:none;
+    }
+
+    /* ─── NOISE TEXTURE ───────────────────────────── */
+    .noise {
+      position:fixed; inset:0; z-index:1;
+      opacity:.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      pointer-events:none;
+    }
+
+    /* ─── LAYOUT ──────────────────────────────────── */
+    .wrapper {
+      position:relative; z-index:2;
+      max-width:1340px;
+      margin:0 auto;
+      padding:0 24px 60px;
+    }
+
+    /* ─── HEADER ──────────────────────────────────── */
+    header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:28px 0 20px;
+      border-bottom:1px solid var(--border);
+      margin-bottom:36px;
+    }
+
+    .logo {
+      display:flex; align-items:center; gap:14px;
+    }
+
+    .logo-icon {
+      width:46px; height:46px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+      border-radius:12px;
+      display:grid; place-items:center;
+      font-size:22px;
+      box-shadow: 0 0 24px var(--gold-glow);
+    }
+
+    .logo-text {
+      font-family: var(--font-display);
+      font-size:1.75rem;
+      font-weight:900;
+      letter-spacing:-.5px;
+      background: linear-gradient(135deg, #fff 30%, var(--gold));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    }
+
+    .logo-sub {
+      font-family: var(--font-mono);
+      font-size:.65rem;
+      color: var(--gold);
+      letter-spacing:3px;
+      text-transform:uppercase;
+    }
+
+    .header-right {
+      display:flex; align-items:center; gap:20px;
+    }
+
+    .live-badge {
+      display:flex; align-items:center; gap:8px;
+      background: rgba(57,255,143,0.08);
+      border:1px solid rgba(57,255,143,0.2);
+      border-radius:30px;
+      padding:6px 14px;
+      font-family: var(--font-mono);
+      font-size:.7rem;
+      color: var(--green);
+      letter-spacing:1px;
+    }
+
+    .live-dot {
+      width:7px; height:7px;
+      background: var(--green);
+      border-radius:50%;
+      animation: pulse-green 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse-green {
+      0%,100%{ box-shadow:0 0 0 0 rgba(57,255,143,.6); }
+      50%{ box-shadow:0 0 0 6px rgba(57,255,143,0); }
+    }
+
+    .clock {
+      font-family: var(--font-mono);
+      font-size:.85rem;
+      color: var(--text-secondary);
+    }
+
+    /* ─── TICKER TAPE ─────────────────────────────── */
+    .ticker-wrap {
+      background: var(--bg-card);
+      border:1px solid var(--border);
+      border-radius:var(--radius-sm);
+      overflow:hidden;
+      margin-bottom:32px;
+      height:40px;
+      display:flex; align-items:center;
+    }
+
+    .ticker-label {
+      background: var(--gold);
+      color: var(--bg-base);
+      font-family: var(--font-mono);
+      font-size:.65rem;
+      font-weight:600;
+      letter-spacing:2px;
+      padding:0 14px;
+      height:100%;
+      display:flex; align-items:center;
+      white-space:nowrap;
+      flex-shrink:0;
+    }
+
+    .ticker-track {
+      display:flex; align-items:center;
+      animation: ticker-scroll 30s linear infinite;
+      gap:0;
+    }
+
+    @keyframes ticker-scroll {
+      0%{ transform:translateX(0); }
+      100%{ transform:translateX(-50%); }
+    }
+
+    .ticker-item {
+      font-family: var(--font-mono);
+      font-size:.72rem;
+      padding:0 28px;
+      white-space:nowrap;
+      border-right:1px solid var(--border);
+      display:flex; align-items:center; gap:8px;
+    }
+
+    .ticker-pair { color: var(--text-secondary); }
+    .ticker-rate { color: var(--text-primary); font-weight:600; }
+    .ticker-up   { color: var(--green); }
+    .ticker-dn   { color: var(--red); }
+
+    /* ─── MAIN GRID ───────────────────────────────── */
+    .main-grid {
+      display:grid;
+      grid-template-columns:1fr 360px;
+      grid-template-rows:auto auto;
+      gap:24px;
+    }
+
+    @media(max-width:960px){
+      .main-grid{ grid-template-columns:1fr; }
+    }
+
+    /* ─── CARD ────────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:28px;
+      position:relative;
+      overflow:hidden;
+      transition: border-color .3s var(--transition), box-shadow .3s var(--transition);
+    }
+
+    .card:hover {
+      border-color: rgba(245,200,66,0.25);
+      box-shadow:0 0 40px rgba(245,200,66,0.07);
+    }
+
+    .card::before {
+      content:'';
+      position:absolute; top:0; left:0; right:0; height:2px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity:0;
+      transition:opacity .3s;
+    }
+
+    .card:hover::before { opacity:1; }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-size:1.1rem;
+      font-weight:700;
+      color: var(--text-primary);
+      margin-bottom:20px;
+      display:flex; align-items:center; gap:10px;
+    }
+
+    .card-title .icon {
+      width:32px; height:32px;
+      background: var(--gold-glow);
+      border:1px solid rgba(245,200,66,0.2);
+      border-radius:8px;
+      display:grid; place-items:center;
+      font-size:15px;
+    }
+
+    /* ─── CONVERTER CARD ──────────────────────────── */
+    .converter-card { grid-column:1; }
+
+    .converter-main {
+      display:grid;
+      grid-template-columns:1fr auto 1fr;
+      gap:16px;
+      align-items:end;
+      margin-bottom:24px;
+    }
+
+    @media(max-width:620px){
+      .converter-main{ grid-template-columns:1fr; }
+      .swap-btn-wrap{ transform:rotate(90deg); }
+    }
+
+    .input-group { display:flex; flex-direction:column; gap:10px; }
+
+    .input-label {
+      font-family: var(--font-mono);
+      font-size:.68rem;
+      color: var(--text-muted);
+      letter-spacing:2px;
+      text-transform:uppercase;
+    }
+
+    .select-wrapper {
+      position:relative;
+    }
+
+    .select-wrapper select {
+      width:100%;
+      background: rgba(255,255,255,0.05);
+      border:1px solid var(--border);
+      border-radius:var(--radius-sm);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size:.85rem;
+      font-weight:600;
+      padding:12px 40px 12px 16px;
+      appearance:none;
+      cursor:pointer;
+      transition: border-color .2s, background .2s;
+    }
+
+    .select-wrapper select:focus {
+      outline:none;
+      border-color: var(--gold);
+      background: rgba(245,200,66,0.05);
+    }
+
+    .select-wrapper::after {
+      content:'▾';
+      position:absolute; right:14px; top:50%; transform:translateY(-50%);
+      color: var(--gold);
+      pointer-events:none;
+      font-size:12px;
+    }
+
+    .amount-input {
+      width:100%;
+      background: rgba(255,255,255,0.05);
+      border:1px solid var(--border);
+      border-radius:var(--radius-sm);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size:1.4rem;
+      font-weight:600;
+      padding:12px 16px;
+      transition: border-color .2s, background .2s;
+    }
+
+    .amount-input:focus {
+      outline:none;
+      border-color: var(--gold);
+      background: rgba(245,200,66,0.05);
+      box-shadow:0 0 20px rgba(245,200,66,0.1);
+    }
+
+    .swap-btn-wrap {
+      display:flex; align-items:center; justify-content:center;
+      padding-bottom:4px;
+    }
+
+    .swap-btn {
+      width:46px; height:46px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+      border:none; border-radius:50%;
+      cursor:pointer;
+      display:grid; place-items:center;
+      font-size:18px;
+      color: var(--bg-base);
+      transition: transform .4s var(--transition), box-shadow .3s;
+      box-shadow: 0 0 20px var(--gold-glow);
+    }
+
+    .swap-btn:hover {
+      transform:rotate(180deg);
+      box-shadow: 0 0 30px rgba(245,200,66,0.4);
+    }
+
+    .result-display {
+      background: linear-gradient(135deg, rgba(245,200,66,0.08), rgba(0,229,195,0.05));
+      border:1px solid rgba(245,200,66,0.2);
+      border-radius:var(--radius);
+      padding:24px 28px;
+      text-align:center;
+      margin-bottom:20px;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .result-display::before {
+      content:'';
+      position:absolute; inset:0;
+      background: linear-gradient(135deg, transparent 40%, rgba(245,200,66,0.04));
+    }
+
+    .result-label {
+      font-family: var(--font-mono);
+      font-size:.65rem;
+      color: var(--text-muted);
+      letter-spacing:3px;
+      text-transform:uppercase;
+      margin-bottom:8px;
+    }
+
+    .result-amount {
+      font-family: var(--font-display);
+      font-size:3rem;
+      font-weight:900;
+      background: linear-gradient(135deg, var(--gold), #fff 60%);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+      line-height:1;
+      transition: all .3s var(--transition);
+    }
+
+    .result-rate {
+      font-family: var(--font-mono);
+      font-size:.75rem;
+      color: var(--text-secondary);
+      margin-top:10px;
+    }
+
+    .result-rate span { color: var(--teal); }
+
+    .convert-btn {
+      width:100%;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+      border:none;
+      border-radius:var(--radius-sm);
+      color: var(--bg-base);
+      font-family: var(--font-mono);
+      font-size:.85rem;
+      font-weight:700;
+      letter-spacing:2px;
+      padding:15px;
+      cursor:pointer;
+      text-transform:uppercase;
+      transition: transform .2s, box-shadow .3s;
+      box-shadow: 0 4px 24px var(--gold-glow);
+    }
+
+    .convert-btn:hover {
+      transform:translateY(-2px);
+      box-shadow: 0 8px 32px rgba(245,200,66,0.35);
+    }
+
+    .convert-btn:active { transform:translateY(0); }
+
+    /* ─── RATES TABLE ─────────────────────────────── */
+    .rates-section { margin-top:28px; }
+
+    .rates-controls {
+      display:flex; gap:10px; margin-bottom:16px;
+      flex-wrap:wrap; align-items:center;
+    }
+
+    .search-box {
+      flex:1; min-width:180px;
+      background: rgba(255,255,255,0.05);
+      border:1px solid var(--border);
+      border-radius:var(--radius-sm);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size:.8rem;
+      padding:9px 14px 9px 36px;
+      transition: border-color .2s;
+      position:relative;
+    }
+
+    .search-box:focus { outline:none; border-color: var(--gold); }
+
+    .search-wrap { position:relative; flex:1; min-width:180px; }
+
+    .search-icon {
+      position:absolute; left:11px; top:50%; transform:translateY(-50%);
+      color: var(--text-muted); font-size:13px; pointer-events:none;
+    }
+
+    .sort-btn {
+      background: rgba(255,255,255,0.05);
+      border:1px solid var(--border);
+      border-radius:var(--radius-sm);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size:.72rem;
+      padding:9px 14px;
+      cursor:pointer;
+      letter-spacing:1px;
+      transition: all .2s;
+    }
+
+    .sort-btn:hover, .sort-btn.active {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: var(--gold-glow);
+    }
+
+    .rates-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
+      gap:10px;
+      max-height:220px;
+      overflow-y:auto;
+      padding-right:4px;
+    }
+
+    .rates-grid::-webkit-scrollbar { width:4px; }
+    .rates-grid::-webkit-scrollbar-track { background:transparent; }
+    .rates-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius:4px; }
+
+    .rate-chip {
+      background: rgba(255,255,255,0.03);
+      border:1px solid var(--border);
+      border-radius:var(--radius-sm);
+      padding:12px 14px;
+      transition: all .25s var(--transition);
+      cursor:pointer;
+    }
+
+    .rate-chip:hover {
+      border-color: rgba(245,200,66,0.3);
+      background: var(--gold-glow);
+      transform:translateY(-2px);
+    }
+
+    .rate-chip-code {
+      font-family: var(--font-mono);
+      font-size:.7rem;
+      color: var(--gold);
+      font-weight:600;
+      letter-spacing:1px;
+    }
+
+    .rate-chip-name {
+      font-size:.65rem;
+      color: var(--text-muted);
+      margin:2px 0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .rate-chip-val {
+      font-family: var(--font-mono);
+      font-size:.88rem;
+      font-weight:600;
+      color: var(--text-primary);
+    }
+
+    .rate-change {
+      font-family: var(--font-mono);
+      font-size:.62rem;
+    }
+
+    .up { color: var(--green); }
+    .dn { color: var(--red); }
+
+    /* ─── RIGHT PANEL ─────────────────────────────── */
+    .right-panel {
+      grid-column:2;
+      display:flex; flex-direction:column; gap:24px;
+    }
+
+    @media(max-width:960px){ .right-panel{ grid-column:1; } }
+
+    /* ─── HISTORY STACK ───────────────────────────── */
+    .history-list {
+      display:flex; flex-direction:column; gap:8px;
+      max-height:280px;
+      overflow-y:auto;
+      padding-right:4px;
+    }
+
+    .history-list::-webkit-scrollbar { width:3px; }
+    .history-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+
+    .hist-item {
+      background: rgba(255,255,255,0.03);
+      border:1px solid var(--border);
+      border-radius:var(--radius-sm);
+      padding:10px 14px;
+      display:flex; justify-content:space-between; align-items:center;
+      transition: all .2s;
+      animation: slideIn .3s var(--transition);
+    }
+
+    @keyframes slideIn {
+      from{ opacity:0; transform:translateX(-12px); }
+      to  { opacity:1; transform:translateX(0); }
+    }
+
+    .hist-item:hover {
+      border-color:rgba(245,200,66,0.2);
+      background:var(--gold-glow);
+    }
+
+    .hist-left { display:flex; flex-direction:column; gap:2px; }
+
+    .hist-pair {
+      font-family: var(--font-mono);
+      font-size:.7rem;
+      color: var(--gold);
+      font-weight:600;
+      letter-spacing:1px;
+    }
+
+    .hist-amount {
+      font-family: var(--font-mono);
+      font-size:.82rem;
+      color: var(--text-primary);
+    }
+
+    .hist-time {
+      font-family: var(--font-mono);
+      font-size:.62rem;
+      color: var(--text-muted);
+    }
+
+    .hist-actions { display:flex; gap:6px; }
+
+    .hist-btn {
+      width:26px; height:26px;
+      background: rgba(255,255,255,0.05);
+      border:1px solid var(--border);
+      border-radius:6px;
+      cursor:pointer;
+      display:grid; place-items:center;
+      font-size:11px;
+      color: var(--text-secondary);
+      transition:all .2s;
+    }
+
+    .hist-btn:hover { border-color:var(--red); color:var(--red); }
+
+    .stack-info {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:14px;
+    }
+
+    .stack-badge {
+      font-family:var(--font-mono);
+      font-size:.65rem;
+      background: rgba(0,229,195,0.1);
+      border:1px solid rgba(0,229,195,0.2);
+      color: var(--teal);
+      padding:3px 10px;
+      border-radius:20px;
+      letter-spacing:1px;
+    }
+
+    /* ─── QUEUE SECTION ───────────────────────────── */
+    .queue-input-row {
+      display:grid;
+      grid-template-columns:70px 1fr 70px auto;
+      gap:8px;
+      margin-bottom:14px;
+      align-items:end;
+    }
+
+    .q-input {
+      background:rgba(255,255,255,0.05);
+      border:1px solid var(--border);
+      border-radius:var(--radius-sm);
+      color:var(--text-primary);
+      font-family:var(--font-mono);
+      font-size:.78rem;
+      padding:9px 10px;
+      transition:border-color .2s;
+    }
+
+    .q-input:focus { outline:none; border-color:var(--gold); }
+
+    .q-add-btn {
+      background:linear-gradient(135deg,var(--teal), #009e85);
+      border:none;
+      border-radius:var(--radius-sm);
+      color:var(--bg-base);
+      font-family:var(--font-mono);
+      font-size:.72rem;
+      font-weight:700;
+      padding:9px 12px;
+      cursor:pointer;
+      letter-spacing:1px;
+      transition:transform .2s, box-shadow .3s;
+      white-space:nowrap;
+    }
+
+    .q-add-btn:hover { transform:translateY(-2px); box-shadow:0 6px 20px var(--teal-dim); }
+
+    .q-process-btn {
+      width:100%;
+      background:rgba(0,229,195,0.1);
+      border:1px solid rgba(0,229,195,0.25);
+      border-radius:var(--radius-sm);
+      color:var(--teal);
+      font-family:var(--font-mono);
+      font-size:.72rem;
+      font-weight:600;
+      padding:9px;
+      cursor:pointer;
+      letter-spacing:1px;
+      transition:all .2s;
+      text-transform:uppercase;
+      margin-bottom:12px;
+    }
+
+    .q-process-btn:hover { background:rgba(0,229,195,0.2); }
+
+    .queue-visual {
+      display:flex; gap:6px; flex-wrap:wrap; min-height:40px;
+      padding:10px;
+      background:rgba(0,0,0,0.2);
+      border:1px dashed var(--border);
+      border-radius:var(--radius-sm);
+      align-items:center;
+    }
+
+    .q-chip {
+      background: var(--teal-dim);
+      border:1px solid rgba(0,229,195,0.3);
+      border-radius:6px;
+      padding:4px 10px;
+      font-family:var(--font-mono);
+      font-size:.68rem;
+      color:var(--teal);
+      font-weight:600;
+      animation:popIn .2s var(--transition);
+      position:relative;
+    }
+
+    @keyframes popIn {
+      from{ opacity:0; transform:scale(.8); }
+      to  { opacity:1; transform:scale(1); }
+    }
+
+    .q-chip.processing {
+      animation: processing .6s ease-in-out;
+    }
+
+    @keyframes processing {
+      0%  { background:rgba(245,200,66,0.2); border-color:var(--gold); }
+      100%{ opacity:0; transform:scale(.8); }
+    }
+
+    .q-empty {
+      font-family:var(--font-mono);
+      font-size:.7rem;
+      color:var(--text-muted);
+      width:100%;
+      text-align:center;
+    }
+
+    /* ─── DSA CONSOLE ─────────────────────────────── */
+    .dsa-section {
+      grid-column:1 / -1;
+    }
+
+    .console-wrap {
+      background: #060a10;
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      overflow:hidden;
+    }
+
+    .console-header {
+      background: rgba(255,255,255,0.03);
+      border-bottom:1px solid var(--border);
+      padding:12px 20px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+
+    .console-dots { display:flex; gap:6px; }
+
+    .console-dot {
+      width:11px; height:11px;
+      border-radius:50%;
+    }
+
+    .console-dot:nth-child(1){ background:#ff5f57; }
+    .console-dot:nth-child(2){ background:#febc2e; }
+    .console-dot:nth-child(3){ background:#28c840; }
+
+    .console-title {
+      font-family:var(--font-mono);
+      font-size:.72rem;
+      color:var(--text-muted);
+      letter-spacing:2px;
+    }
+
+    .console-clear {
+      background:none; border:1px solid var(--border);
+      border-radius:5px;
+      color:var(--text-muted);
+      font-family:var(--font-mono);
+      font-size:.65rem;
+      padding:4px 10px;
+      cursor:pointer;
+      letter-spacing:1px;
+      transition:all .2s;
+    }
+
+    .console-clear:hover { border-color:var(--red); color:var(--red); }
+
+    .console-body {
+      padding:18px 20px;
+      font-family:var(--font-mono);
+      font-size:.78rem;
+      line-height:1.8;
+      max-height:320px;
+      overflow-y:auto;
+      color:#c8cce0;
+    }
+
+    .console-body::-webkit-scrollbar { width:4px; }
+    .console-body::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+
+    .log-line { display:flex; gap:12px; padding:2px 0; }
+    .log-time { color:var(--text-muted); flex-shrink:0; }
+    .log-tag  { flex-shrink:0; font-weight:600; padding:0 6px; border-radius:4px; font-size:.68rem; }
+
+    .tag-info  { color:#64b5f6; background:rgba(100,181,246,0.1); }
+    .tag-dsa   { color:var(--gold); background:var(--gold-glow); }
+    .tag-stack { color:var(--teal); background:var(--teal-dim); }
+    .tag-queue { color:#e879f9; background:rgba(232,121,249,0.1); }
+    .tag-sort  { color:var(--green); background:rgba(57,255,143,0.1); }
+    .tag-search{ color:#fb923c; background:rgba(251,146,60,0.1); }
+    .tag-result{ color:var(--gold); background:var(--gold-glow); }
+
+    .log-msg { color:#c8cce0; }
+    .log-val  { color:var(--green); }
+
+    /* ─── STATS BAR ───────────────────────────────── */
+    .stats-bar {
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:16px;
+      margin-bottom:24px;
+    }
+
+    @media(max-width:640px){ .stats-bar{ grid-template-columns:repeat(2,1fr); } }
+
+    .stat-card {
+      background:var(--bg-card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:18px 20px;
+      transition:all .25s;
+    }
+
+    .stat-card:hover {
+      border-color:rgba(245,200,66,0.25);
+      transform:translateY(-2px);
+    }
+
+    .stat-label {
+      font-family:var(--font-mono);
+      font-size:.62rem;
+      color:var(--text-muted);
+      letter-spacing:2px;
+      text-transform:uppercase;
+      margin-bottom:8px;
+    }
+
+    .stat-val {
+      font-family:var(--font-display);
+      font-size:1.6rem;
+      font-weight:700;
+      color:var(--gold);
+    }
+
+    .stat-sub {
+      font-family:var(--font-mono);
+      font-size:.68rem;
+      color:var(--text-secondary);
+      margin-top:4px;
+    }
+
+    /* ─── FOOTER ──────────────────────────────────── */
+    footer {
+      border-top:1px solid var(--border);
+      margin-top:40px;
+      padding-top:28px;
+      display:flex; justify-content:space-between; align-items:center;
+      flex-wrap:wrap; gap:16px;
+    }
+
+    .footer-text {
+      font-family:var(--font-mono);
+      font-size:.7rem;
+      color:var(--text-muted);
+      line-height:1.8;
+    }
+
+    .footer-text strong { color:var(--gold); }
+
+    .dsa-tags { display:flex; gap:8px; flex-wrap:wrap; }
+
+    .dsa-tag {
+      font-family:var(--font-mono);
+      font-size:.62rem;
+      padding:4px 10px;
+      border-radius:20px;
+      border:1px solid;
+    }
+
+    /* ─── TOAST ───────────────────────────────────── */
+    .toast-container {
+      position:fixed; bottom:28px; right:28px;
+      display:flex; flex-direction:column; gap:10px;
+      z-index:1000;
+    }
+
+    .toast {
+      background:var(--bg-card);
+      border:1px solid var(--border);
+      border-left:3px solid var(--gold);
+      border-radius:var(--radius-sm);
+      padding:12px 18px;
+      font-family:var(--font-mono);
+      font-size:.76rem;
+      color:var(--text-primary);
+      box-shadow:0 8px 32px rgba(0,0,0,0.4);
+      animation:toastIn .3s var(--transition);
+      min-width:240px;
+    }
+
+    @keyframes toastIn {
+      from{ opacity:0; transform:translateX(40px); }
+      to  { opacity:1; transform:translateX(0); }
+    }
+
+    /* ─── LOADING SHIMMER ─────────────────────────── */
+    .shimmer {
+      background: linear-gradient(90deg,
+        rgba(255,255,255,0.03) 25%,
+        rgba(255,255,255,0.07) 50%,
+        rgba(255,255,255,0.03) 75%);
+      background-size:200% 100%;
+      animation:shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+      0%{ background-position:200% 0; }
+      100%{ background-position:-200% 0; }
+    }
+
+    /* section label */
+    .section-eyebrow {
+      font-family:var(--font-mono);
+      font-size:.62rem;
+      color:var(--gold);
+      letter-spacing:3px;
+      text-transform:uppercase;
+      margin-bottom:6px;
+    }
+
+    /* Pulse animation for result */
+    @keyframes resultPulse {
+      0%  { text-shadow:0 0 0 var(--gold); }
+      50% { text-shadow:0 0 30px rgba(245,200,66,0.6); }
+      100%{ text-shadow:0 0 0 var(--gold); }
+    }
+
+    .result-pulse {
+      animation: resultPulse .6s var(--transition);
+    }
+
+    /* Scrollbar global */
+    * { scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  </style>
+</head>
+<body>
+
+<div class="noise"></div>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="wrapper">
+
+  <!-- ─── HEADER ─────────────────────────────────── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">💱</div>
+      <div>
+        <div class="logo-text">FX Live</div>
+        <div class="logo-sub">Currency Converter</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        LIVE RATES
+      </div>
+      <div class="clock" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <!-- ─── TICKER ─────────────────────────────────── -->
+  <div class="ticker-wrap">
+    <div class="ticker-label">RATES</div>
+    <div style="overflow:hidden;flex:1;">
+      <div class="ticker-track" id="tickerTrack">
+        <!-- populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── STATS BAR ─────────────────────────────── -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-label">Conversions</div>
+      <div class="stat-val" id="stat-total">0</div>
+      <div class="stat-sub">Total today</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Stack Size</div>
+      <div class="stat-val" id="stat-stack">0</div>
+      <div class="stat-sub">History entries</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Queue</div>
+      <div class="stat-val" id="stat-queue">0</div>
+      <div class="stat-sub">Pending jobs</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Currencies</div>
+      <div class="stat-val" id="stat-currencies">30</div>
+      <div class="stat-sub">Supported pairs</div>
+    </div>
+  </div>
+
+  <!-- ─── MAIN GRID ──────────────────────────────── -->
+  <div class="main-grid">
+
+    <!-- LEFT: CONVERTER + RATES -->
+    <div class="converter-card card">
+      <div class="section-eyebrow">Step 1 + 2 — UI & Functionality</div>
+      <div class="card-title">
+        <div class="icon">⚡</div>
+        Live Currency Converter
+      </div>
+
+      <div class="converter-main">
+        <div class="input-group">
+          <div class="input-label">FROM</div>
+          <div class="select-wrapper">
+            <select id="fromCurrency"></select>
+          </div>
+          <input type="number" class="amount-input" id="amountInput"
+            value="1" min="0" step="any" placeholder="Amount"/>
+        </div>
+
+        <div class="swap-btn-wrap">
+          <button class="swap-btn" id="swapBtn" title="Swap currencies">⇄</button>
+        </div>
+
+        <div class="input-group">
+          <div class="input-label">TO</div>
+          <div class="select-wrapper">
+            <select id="toCurrency"></select>
+          </div>
+          <input type="number" class="amount-input" id="resultInput"
+            readonly placeholder="Result"/>
+        </div>
+      </div>
+
+      <div class="result-display" id="resultDisplay">
+        <div class="result-label">Converted Amount</div>
+        <div class="result-amount" id="resultAmount">—</div>
+        <div class="result-rate" id="resultRate">Select currencies to convert</div>
+      </div>
+
+      <button class="convert-btn" id="convertBtn">▶ Convert Now</button>
+
+      <!-- RATES TABLE -->
+      <div class="rates-section">
+        <div class="card-title" style="margin-top:20px;">
+          <div class="icon">📊</div>
+          All Rates vs USD
+        </div>
+
+        <div class="rates-controls">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input class="search-box" type="text" id="rateSearch"
+              placeholder="Search currency..." />
+          </div>
+          <button class="sort-btn active" id="sortName" data-sort="name">A–Z</button>
+          <button class="sort-btn" id="sortRate" data-sort="rate">Rate ↑</button>
+          <button class="sort-btn" id="sortRateDsc" data-sort="rateDsc">Rate ↓</button>
+        </div>
+
+        <div class="rates-grid" id="ratesGrid">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+
+      <!-- STACK: HISTORY -->
+      <div class="card">
+        <div class="section-eyebrow">DSA — CO3: Stack ADT</div>
+        <div class="card-title">
+          <div class="icon">🗂</div>
+          Conversion History
+        </div>
+        <div class="stack-info">
+          <span class="stack-badge">STACK — LIFO</span>
+          <button class="sort-btn" id="clearHistory">Clear Stack</button>
+        </div>
+        <div class="history-list" id="historyList">
+          <p style="font-family:var(--font-mono);font-size:.72rem;color:var(--text-muted);text-align:center;padding:20px 0;">
+            Stack is empty — convert to push
+          </p>
+        </div>
+      </div>
+
+      <!-- QUEUE: BATCH CONVERSION -->
+      <div class="card">
+        <div class="section-eyebrow">DSA — CO3: Queue ADT</div>
+        <div class="card-title">
+          <div class="icon">📥</div>
+          Batch Queue
+        </div>
+        <div class="queue-input-row">
+          <input class="q-input" type="number" id="qAmt" placeholder="Amt" value="100"/>
+          <div class="select-wrapper" style="flex:1;">
+            <select id="qFrom" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font-mono);font-size:.75rem;padding:9px 30px 9px 10px;appearance:none;cursor:pointer;"></select>
+          </div>
+          <div class="select-wrapper" style="flex:1;">
+            <select id="qTo" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font-mono);font-size:.75rem;padding:9px 30px 9px 10px;appearance:none;cursor:pointer;"></select>
+          </div>
+          <button class="q-add-btn" id="qAddBtn">+ ADD</button>
+        </div>
+        <button class="q-process-btn" id="qProcessBtn">⚙ Process Queue (Dequeue All)</button>
+        <div class="queue-visual" id="queueVisual">
+          <span class="q-empty">Queue is empty</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM: DSA CONSOLE (full width) -->
+    <div class="dsa-section card">
+      <div class="section-eyebrow">Step 3 — DSA Output Console</div>
+      <div class="card-title">
+        <div class="icon">⌨</div>
+        DSA Algorithm Console
+        <span style="font-family:var(--font-mono);font-size:.65rem;color:var(--text-muted);margin-left:auto;letter-spacing:1px;">
+          Stack · Queue · BinarySearch · BubbleSort · LinearSearch
+        </span>
+      </div>
+      <div class="console-wrap">
+        <div class="console-header">
+          <div class="console-dots">
+            <div class="console-dot"></div>
+            <div class="console-dot"></div>
+            <div class="console-dot"></div>
+          </div>
+          <div class="console-title">DSA ALGORITHM OUTPUT</div>
+          <button class="console-clear" id="consoleClear">CLEAR</button>
+        </div>
+        <div class="console-body" id="consoleBody"></div>
+      </div>
+    </div>
+
+  </div><!-- end main-grid -->
+
+  <!-- ─── FOOTER ──────────────────────────────────── -->
+  <footer>
+    <div class="footer-text">
+      <strong>FX Live — Currency Converter</strong><br/>
+      PBL Project | FWD + DSA Integration | Status 1 · 2 · 3 Complete<br/>
+      <span style="color:var(--text-muted);">Demonstrates: HTML5 · CSS3 · JavaScript ES6+ · Stack · Queue · Sorting · Searching · Arrays</span>
+    </div>
+    <div class="dsa-tags">
+      <span class="dsa-tag" style="color:var(--teal);border-color:rgba(0,229,195,0.3);">Stack LIFO</span>
+      <span class="dsa-tag" style="color:#e879f9;border-color:rgba(232,121,249,0.3);">Queue FIFO</span>
+      <span class="dsa-tag" style="color:var(--green);border-color:rgba(57,255,143,0.3);">Bubble Sort</span>
+      <span class="dsa-tag" style="color:#fb923c;border-color:rgba(251,146,60,0.3);">Binary Search</span>
+      <span class="dsa-tag" style="color:#64b5f6;border-color:rgba(100,181,246,0.3);">Linear Search</span>
+      <span class="dsa-tag" style="color:var(--gold);border-color:rgba(245,200,66,0.3);">Arrays / Lists</span>
+    </div>
+  </footer>
+
+</div><!-- end wrapper -->
+
+<script>
+/* =====================================================
+   FX LIVE — Currency Converter
+   Full DSA Implementation:
+   - Arrays/Lists     (CO1, CO2)
+   - Stack (LIFO)     (CO3)
+   - Queue (FIFO)     (CO3)
+   - Bubble Sort      (CO1)
+   - Binary Search    (CO1)
+   - Linear Search    (CO1)
+   - Hash Map (rates) (CO4)
+   ===================================================== */
+
+// ═══════════════════════════════════════════════════
+// DATA — Currency Array (Array/List concept - CO2)
+// ═══════════════════════════════════════════════════
+const CURRENCIES = [
+  { code:'USD', name:'US Dollar',         symbol:'$',  flag:'🇺🇸' },
+  { code:'EUR', name:'Euro',              symbol:'€',  flag:'🇪🇺' },
+  { code:'GBP', name:'British Pound',     symbol:'£',  flag:'🇬🇧' },
+  { code:'JPY', name:'Japanese Yen',      symbol:'¥',  flag:'🇯🇵' },
+  { code:'INR', name:'Indian Rupee',      symbol:'₹',  flag:'🇮🇳' },
+  { code:'AUD', name:'Australian Dollar', symbol:'A$', flag:'🇦🇺' },
+  { code:'CAD', name:'Canadian Dollar',   symbol:'C$', flag:'🇨🇦' },
+  { code:'CHF', name:'Swiss Franc',       symbol:'₣',  flag:'🇨🇭' },
+  { code:'CNY', name:'Chinese Yuan',      symbol:'¥',  flag:'🇨🇳' },
+  { code:'HKD', name:'Hong Kong Dollar',  symbol:'HK$',flag:'🇭🇰' },
+  { code:'SGD', name:'Singapore Dollar',  symbol:'S$', flag:'🇸🇬' },
+  { code:'NZD', name:'New Zealand Dollar',symbol:'NZ$',flag:'🇳🇿' },
+  { code:'SEK', name:'Swedish Krona',     symbol:'kr', flag:'🇸🇪' },
+  { code:'NOK', name:'Norwegian Krone',   symbol:'kr', flag:'🇳🇴' },
+  { code:'MXN', name:'Mexican Peso',      symbol:'$',  flag:'🇲🇽' },
+  { code:'BRL', name:'Brazilian Real',    symbol:'R$', flag:'🇧🇷' },
+  { code:'ZAR', name:'South African Rand',symbol:'R',  flag:'🇿🇦' },
+  { code:'TRY', name:'Turkish Lira',      symbol:'₺',  flag:'🇹🇷' },
+  { code:'RUB', name:'Russian Ruble',     symbol:'₽',  flag:'🇷🇺' },
+  { code:'KRW', name:'South Korean Won',  symbol:'₩',  flag:'🇰🇷' },
+  { code:'AED', name:'UAE Dirham',        symbol:'د.إ',flag:'🇦🇪' },
+  { code:'SAR', name:'Saudi Riyal',       symbol:'﷼',  flag:'🇸🇦' },
+  { code:'THB', name:'Thai Baht',         symbol:'฿',  flag:'🇹🇭' },
+  { code:'IDR', name:'Indonesian Rupiah', symbol:'Rp', flag:'🇮🇩' },
+  { code:'MYR', name:'Malaysian Ringgit', symbol:'RM', flag:'🇲🇾' },
+  { code:'PHP', name:'Philippine Peso',   symbol:'₱',  flag:'🇵🇭' },
+  { code:'PKR', name:'Pakistani Rupee',   symbol:'₨',  flag:'🇵🇰' },
+  { code:'EGP', name:'Egyptian Pound',    symbol:'£',  flag:'🇪🇬' },
+  { code:'NGN', name:'Nigerian Naira',    symbol:'₦',  flag:'🇳🇬' },
+  { code:'DKK', name:'Danish Krone',      symbol:'kr', flag:'🇩🇰' },
+];
+
+// ═══════════════════════════════════════════════════
+// HASH MAP — Exchange Rates (CO4: Hash-based DSA)
+// Base rates relative to USD
+// ═══════════════════════════════════════════════════
+const BASE_RATES = {
+  USD:1,       EUR:0.92,    GBP:0.79,    JPY:149.5,   INR:83.12,
+  AUD:1.53,    CAD:1.35,    CHF:0.89,    CNY:7.24,    HKD:7.82,
+  SGD:1.34,    NZD:1.63,    SEK:10.41,   NOK:10.58,   MXN:17.15,
+  BRL:4.97,    ZAR:18.63,   TRY:30.47,   RUB:89.5,    KRW:1325,
+  AED:3.67,    SAR:3.75,    THB:35.1,    IDR:15590,   MYR:4.72,
+  PHP:55.6,    PKR:279,     EGP:30.9,    NGN:1550,    DKK:6.89,
+};
+
+// Live rates will fluctuate from base
+let LIVE_RATES = { ...BASE_RATES };
+
+// ═══════════════════════════════════════════════════
+// ██  STACK  — Conversion History (CO3: Stack LIFO)
+// ═══════════════════════════════════════════════════
+class ConversionStack {
+  constructor(maxSize = 20) {
+    this.data  = [];           // Underlying array
+    this.maxSize = maxSize;
+    this.top   = -1;
+  }
+  push(item) {
+    if (this.isFull()) {
+      // Remove bottom item (oldest) to make room
+      this.data.shift();
+      this.top--;
+      console.log(`%c[STACK] Max size reached — shifted bottom element`, 'color:#f5c842');
+    }
+    this.data.push(item);
+    this.top++;
+    logConsole('stack', `PUSH → ${item.from}→${item.to} | ${item.amount} = ${item.result.toFixed(4)} | top=${this.top}`);
+    return this;
+  }
+  pop() {
+    if (this.isEmpty()) {
+      logConsole('stack', 'POP → Stack is EMPTY (underflow)');
+      return null;
+    }
+    const item = this.data.pop();
+    this.top--;
+    logConsole('stack', `POP  ← ${item.from}→${item.to} | top=${this.top}`);
+    return item;
+  }
+  peek() {
+    return this.isEmpty() ? null : this.data[this.top];
+  }
+  isEmpty() { return this.top === -1; }
+  isFull()  { return this.data.length >= this.maxSize; }
+  size()    { return this.data.length; }
+  // Traverse stack — CO2
+  traverse() {
+    logConsole('dsa', `Stack traverse: [${this.data.map(i => `${i.from}→${i.to}`).join(', ')}]`);
+    return [...this.data].reverse();
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// ██  QUEUE  — Batch Conversion Jobs (CO3: Queue FIFO)
+// ═══════════════════════════════════════════════════
+class ConversionQueue {
+  constructor() {
+    this.items = [];   // Array-based queue
+    this.front = 0;
+    this.rear  = -1;
+    this.size_ = 0;
+  }
+  enqueue(job) {
+    this.items.push(job);
+    this.rear++;
+    this.size_++;
+    logConsole('queue', `ENQUEUE → Job #${this.size_}: ${job.amount} ${job.from}→${job.to} | rear=${this.rear}`);
+  }
+  dequeue() {
+    if (this.isEmpty()) {
+      logConsole('queue', 'DEQUEUE → Queue is EMPTY (underflow)');
+      return null;
+    }
+    const job = this.items[this.front];
+    this.front++;
+    this.size_--;
+    logConsole('queue', `DEQUEUE ← Processing: ${job.amount} ${job.from}→${job.to} | front=${this.front}`);
+    return job;
+  }
+  peek()    { return this.isEmpty() ? null : this.items[this.front]; }
+  isEmpty() { return this.size_ === 0; }
+  size()    { return this.size_; }
+  items_()  { return this.items.slice(this.front); }
+}
+
+// ═══════════════════════════════════════════════════
+// ██  SORTING ALGORITHMS  (CO1)
+// ═══════════════════════════════════════════════════
+
+// Bubble Sort — sort array of {code, rate} by rate ascending
+function bubbleSort(arr) {
+  const a = [...arr];
+  const n = a.length;
+  let swaps = 0;
+  logConsole('sort', `Bubble Sort START — n=${n} elements`);
+  for (let i = 0; i < n - 1; i++) {
+    for (let j = 0; j < n - i - 1; j++) {
+      if (a[j].rate > a[j + 1].rate) {
+        [a[j], a[j + 1]] = [a[j + 1], a[j]];
+        swaps++;
+      }
+    }
+  }
+  logConsole('sort', `Bubble Sort DONE  — swaps=${swaps} | O(n²)=O(${n*n})`);
+  logConsole('result', `Sorted: [${a.slice(0,5).map(x=>`${x.code}:${x.rate.toFixed(2)}`).join(', ')} ...]`);
+  return a;
+}
+
+// Selection Sort — by code alphabetically
+function selectionSort(arr) {
+  const a = [...arr];
+  const n = a.length;
+  logConsole('sort', `Selection Sort START — n=${n} elements (by currency code A–Z)`);
+  for (let i = 0; i < n - 1; i++) {
+    let minIdx = i;
+    for (let j = i + 1; j < n; j++) {
+      if (a[j].code < a[minIdx].code) minIdx = j;
+    }
+    if (minIdx !== i) [a[i], a[minIdx]] = [a[minIdx], a[i]];
+  }
+  logConsole('sort', `Selection Sort DONE — O(n²) comparisons completed`);
+  return a;
+}
+
+// Merge Sort — by rate descending
+function mergeSort(arr) {
+  if (arr.length <= 1) return arr;
+  const mid  = Math.floor(arr.length / 2);
+  const left  = mergeSort(arr.slice(0, mid));
+  const right = mergeSort(arr.slice(mid));
+  return merge(left, right);
+}
+function merge(l, r) {
+  const res = [];
+  let i = 0, j = 0;
+  while (i < l.length && j < r.length) {
+    res.push(l[i].rate >= r[j].rate ? l[i++] : r[j++]);
+  }
+  return [...res, ...l.slice(i), ...r.slice(j)];
+}
+
+// ═══════════════════════════════════════════════════
+// ██  SEARCHING ALGORITHMS  (CO1)
+// ═══════════════════════════════════════════════════
+
+// Linear Search — find currency by code in unsorted array
+function linearSearch(arr, code) {
+  logConsole('search', `Linear Search for "${code}" in ${arr.length} elements...`);
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i].code === code) {
+      logConsole('search', `Linear Search FOUND "${code}" at index=${i} ✓`);
+      return i;
+    }
+  }
+  logConsole('search', `Linear Search: "${code}" NOT FOUND`);
+  return -1;
+}
+
+// Binary Search — requires sorted array by code
+function binarySearch(sortedArr, code) {
+  let lo = 0, hi = sortedArr.length - 1;
+  let steps = 0;
+  logConsole('search', `Binary Search for "${code}" in sorted array (n=${sortedArr.length})...`);
+  while (lo <= hi) {
+    steps++;
+    const mid = Math.floor((lo + hi) / 2);
+    const cmp = sortedArr[mid].code.localeCompare(code);
+    if (cmp === 0) {
+      logConsole('search', `Binary Search FOUND "${code}" at mid=${mid} | steps=${steps} | O(log n)=O(${Math.ceil(Math.log2(sortedArr.length))})`);
+      return mid;
+    } else if (cmp < 0) { lo = mid + 1; }
+    else { hi = mid - 1; }
+  }
+  logConsole('search', `Binary Search: "${code}" NOT FOUND | steps=${steps}`);
+  return -1;
+}
+
+// ═══════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════
+const historyStack = new ConversionStack(20);
+const batchQueue   = new ConversionQueue();
+let totalConversions = 0;
+let currentSortMode  = 'name';
+let searchQuery      = '';
+
+// ═══════════════════════════════════════════════════
+// CONSOLE LOGGER — displays output in UI console
+// ═══════════════════════════════════════════════════
+function logConsole(type, message) {
+  const body = document.getElementById('consoleBody');
+  if (!body) return;
+
+  // Also log to browser console
+  const prefix = `[${type.toUpperCase()}]`;
+  console.log(`%c${prefix}%c ${message}`,
+    'color:#f5c842;font-weight:bold;font-family:monospace',
+    'color:#c8cce0;font-family:monospace'
+  );
+
+  const now  = new Date();
+  const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}.${String(now.getMilliseconds()).padStart(3,'0')}`;
+
+  const tagMap = {
+    info:'tag-info', dsa:'tag-dsa', stack:'tag-stack',
+    queue:'tag-queue', sort:'tag-sort', search:'tag-search', result:'tag-result'
+  };
+
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `
+    <span class="log-time">${time}</span>
+    <span class="log-tag ${tagMap[type] || 'tag-info'}">${type.toUpperCase()}</span>
+    <span class="log-msg">${message}</span>
+  `;
+  body.appendChild(line);
+  body.scrollTop = body.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════
+// POPULATE SELECTS
+// ═══════════════════════════════════════════════════
+function populateSelects() {
+  const selects = ['fromCurrency','toCurrency','qFrom','qTo'];
+  selects.forEach(id => {
+    const el = document.getElementById(id);
+    el.innerHTML = CURRENCIES.map(c =>
+      `<option value="${c.code}">${c.flag} ${c.code} — ${c.name}</option>`
+    ).join('');
+  });
+  document.getElementById('fromCurrency').value = 'USD';
+  document.getElementById('toCurrency').value   = 'INR';
+  document.getElementById('qFrom').value        = 'USD';
+  document.getElementById('qTo').value          = 'EUR';
+  logConsole('info', `Populated ${CURRENCIES.length} currencies into all select elements`);
+  logConsole('dsa',  `Array initialized: CURRENCIES[${CURRENCIES.length}] — Array ADT (CO2)`);
+}
+
+// ═══════════════════════════════════════════════════
+// RATE SIMULATION — fake live rate updates
+// ═══════════════════════════════════════════════════
+function simulateLiveRates() {
+  CURRENCIES.forEach(c => {
+    if (c.code === 'USD') return;
+    const base  = BASE_RATES[c.code];
+    const delta = (Math.random() - 0.5) * base * 0.004; // ±0.2% fluctuation
+    LIVE_RATES[c.code] = parseFloat((base + delta).toFixed(6));
+  });
+}
+
+function getRate(from, to) {
+  const fromUSD = LIVE_RATES[from];
+  const toUSD   = LIVE_RATES[to];
+  return toUSD / fromUSD;
+}
+
+// ═══════════════════════════════════════════════════
+// MAIN CONVERT FUNCTION
+// ═══════════════════════════════════════════════════
+function doConvert(from, to, amount, pushToStack = true) {
+  const rate   = getRate(from, to);
+  const result = amount * rate;
+
+  // Binary Search for source currency in sorted array
+  const sorted = selectionSort(CURRENCIES.map(c => ({ code:c.code, rate:LIVE_RATES[c.code] })));
+  binarySearch(sorted, from);
+  binarySearch(sorted, to);
+
+  // Linear search in original array
+  linearSearch(CURRENCIES, from);
+
+  if (pushToStack) {
+    const rec = { from, to, amount, result, rate, ts: new Date() };
+    historyStack.push(rec);
+    totalConversions++;
+    renderHistory();
+    updateStats();
+    showToast(`${amount} ${from} = ${result.toFixed(4)} ${to}`);
+  }
+
+  logConsole('result', `${amount} ${from} × ${rate.toFixed(6)} = ${result.toFixed(4)} ${to}`);
+  return result;
+}
+
+function triggerConvert() {
+  const from   = document.getElementById('fromCurrency').value;
+  const to     = document.getElementById('toCurrency').value;
+  const amount = parseFloat(document.getElementById('amountInput').value) || 0;
+  if (!amount) { showToast('Enter a valid amount!'); return; }
+
+  logConsole('info', `─── New Conversion Request: ${amount} ${from} → ${to} ───`);
+
+  const result = doConvert(from, to, amount);
+  const rate   = getRate(from, to);
+
+  // Update UI
+  const resultEl = document.getElementById('resultAmount');
+  resultEl.classList.remove('result-pulse');
+  void resultEl.offsetWidth; // reflow
+  resultEl.classList.add('result-pulse');
+
+  const sym = CURRENCIES.find(c => c.code === to)?.symbol || '';
+  document.getElementById('resultAmount').textContent = `${sym}${result.toFixed(4)}`;
+  document.getElementById('resultInput').value = result.toFixed(4);
+  document.getElementById('resultRate').innerHTML =
+    `1 ${from} = <span>${rate.toFixed(6)}</span> ${to} &nbsp;|&nbsp; Updated live`;
+}
+
+// ═══════════════════════════════════════════════════
+// RATES GRID RENDER
+// ═══════════════════════════════════════════════════
+function buildRatesArray() {
+  return CURRENCIES.map(c => ({
+    code : c.code,
+    name : c.name,
+    flag : c.flag,
+    symbol:c.symbol,
+    rate : LIVE_RATES[c.code],
+    change: ((LIVE_RATES[c.code] - BASE_RATES[c.code]) / BASE_RATES[c.code] * 100),
+  }));
+}
+
+function renderRates() {
+  let arr = buildRatesArray();
+
+  // Filter via Linear Search concept (array traversal)
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    logConsole('search', `Linear search filter: "${searchQuery}" across ${arr.length} items`);
+    arr = arr.filter(r =>
+      r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q)
+    );
+    logConsole('search', `Filter result: ${arr.length} matches found`);
+  }
+
+  // Sort based on mode
+  if (currentSortMode === 'name') {
+    logConsole('sort', `Applying Selection Sort (A–Z by code)...`);
+    arr = selectionSort(arr);
+  } else if (currentSortMode === 'rate') {
+    logConsole('sort', `Applying Bubble Sort (rate ascending)...`);
+    arr = bubbleSort(arr);
+  } else if (currentSortMode === 'rateDsc') {
+    logConsole('sort', `Applying Merge Sort (rate descending)...`);
+    arr = mergeSort(arr);
+  }
+
+  const grid = document.getElementById('ratesGrid');
+  grid.innerHTML = arr.map(r => `
+    <div class="rate-chip" onclick="quickSet('${r.code}')">
+      <div class="rate-chip-code">${r.flag} ${r.code}</div>
+      <div class="rate-chip-name">${r.name}</div>
+      <div class="rate-chip-val">${r.rate >= 1000 ? r.rate.toFixed(0) : r.rate >= 100 ? r.rate.toFixed(2) : r.rate.toFixed(4)}</div>
+      <div class="rate-change ${r.change >= 0 ? 'up' : 'dn'}">
+        ${r.change >= 0 ? '▲' : '▼'} ${Math.abs(r.change).toFixed(3)}%
+      </div>
+    </div>
+  `).join('');
+}
+
+function quickSet(code) {
+  document.getElementById('toCurrency').value = code;
+  logConsole('info', `Quick-set target currency: ${code}`);
+  // Run binary search to find it
+  const sorted = selectionSort(buildRatesArray());
+  const idx = binarySearch(sorted, code);
+  logConsole('search', `Binary search result: ${code} found at index ${idx} in sorted array`);
+  triggerConvert();
+}
+
+// ═══════════════════════════════════════════════════
+// HISTORY STACK RENDER
+// ═══════════════════════════════════════════════════
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const items = historyStack.traverse(); // newest first
+
+  if (items.length === 0) {
+    list.innerHTML = `<p style="font-family:var(--font-mono);font-size:.72rem;color:var(--text-muted);text-align:center;padding:20px 0;">Stack is empty — convert to push</p>`;
+    return;
+  }
+
+  list.innerHTML = items.map((item, i) => {
+    const sym = CURRENCIES.find(c => c.code === item.to)?.symbol || '';
+    const ts  = `${String(item.ts.getHours()).padStart(2,'0')}:${String(item.ts.getMinutes()).padStart(2,'0')}:${String(item.ts.getSeconds()).padStart(2,'0')}`;
+    return `
+      <div class="hist-item">
+        <div class="hist-left">
+          <div class="hist-pair">${item.from} → ${item.to}</div>
+          <div class="hist-amount">${item.amount} = ${sym}${item.result.toFixed(4)}</div>
+          <div class="hist-time">@ ${ts} ${i === 0 ? '← TOP' : ''}</div>
+        </div>
+        <div class="hist-actions">
+          <button class="hist-btn" title="Remove" onclick="popHistItem()">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function popHistItem() {
+  historyStack.pop();
+  renderHistory();
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════
+// QUEUE RENDER
+// ═══════════════════════════════════════════════════
+function renderQueue() {
+  const visual = document.getElementById('queueVisual');
+  const items  = batchQueue.items_();
+  if (items.length === 0) {
+    visual.innerHTML = '<span class="q-empty">Queue is empty</span>';
+  } else {
+    visual.innerHTML = items.map((j,i) => `
+      <div class="q-chip" title="${j.amount} ${j.from}→${j.to}">
+        ${i === 0 ? '⏩ ' : ''}${j.amount} ${j.from}→${j.to}
+      </div>`).join('');
+  }
+  updateStats();
+}
+
+function addToQueue() {
+  const amt  = parseFloat(document.getElementById('qAmt').value);
+  const from = document.getElementById('qFrom').value;
+  const to   = document.getElementById('qTo').value;
+  if (!amt || amt <= 0) { showToast('Enter a valid amount for queue'); return; }
+  batchQueue.enqueue({ amount:amt, from, to });
+  renderQueue();
+  showToast(`Enqueued: ${amt} ${from}→${to}`);
+}
+
+function processQueue() {
+  if (batchQueue.isEmpty()) {
+    showToast('Queue is already empty!');
+    logConsole('queue', 'Process: Queue is EMPTY — nothing to dequeue');
+    return;
+  }
+  logConsole('queue', `Processing entire queue — ${batchQueue.size()} job(s) pending`);
+  let processed = 0;
+  while (!batchQueue.isEmpty()) {
+    const job = batchQueue.dequeue();
+    if (!job) break;
+    const result = doConvert(job.from, job.to, job.amount, true);
+    processed++;
+    logConsole('result', `Queue job #${processed}: ${job.amount} ${job.from} = ${result.toFixed(4)} ${job.to}`);
+  }
+  renderQueue();
+  logConsole('queue', `Queue processing COMPLETE — ${processed} job(s) executed`);
+  showToast(`Processed ${processed} queue job(s)`);
+}
+
+// ═══════════════════════════════════════════════════
+// TICKER TAPE
+// ═══════════════════════════════════════════════════
+function buildTicker() {
+  const pairs = [
+    ['EUR','USD'],['GBP','USD'],['USD','JPY'],['USD','INR'],['AUD','USD'],
+    ['USD','CAD'],['USD','CHF'],['USD','CNY'],['USD','HKD'],['USD','SGD'],
+    ['USD','MXN'],['USD','BRL'],['USD','ZAR'],['USD','KRW'],['USD','AED'],
+  ];
+  const html = [...pairs, ...pairs].map(([f,t]) => {
+    const rate = getRate(f, t);
+    const base = getRate(f, t) / (1 + (Math.random()-.5)*0.002);
+    const up   = rate >= base;
+    return `<div class="ticker-item">
+      <span class="ticker-pair">${f}/${t}</span>
+      <span class="ticker-rate">${rate.toFixed(4)}</span>
+      <span class="${up ? 'ticker-up' : 'ticker-dn'}">${up ? '▲' : '▼'}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('tickerTrack').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════
+// STATS UPDATE
+// ═══════════════════════════════════════════════════
+function updateStats() {
+  document.getElementById('stat-total').textContent   = totalConversions;
+  document.getElementById('stat-stack').textContent   = historyStack.size();
+  document.getElementById('stat-queue').textContent   = batchQueue.size();
+  document.getElementById('stat-currencies').textContent = CURRENCIES.length;
+}
+
+// ═══════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-US', { hour12:false });
+}
+
+// ═══════════════════════════════════════════════════
+// TOAST NOTIFICATION
+// ═══════════════════════════════════════════════════
+function showToast(msg) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity='0'; toast.style.transform='translateX(40px)'; toast.style.transition='all .3s'; }, 2800);
+  setTimeout(() => toast.remove(), 3200);
+}
+
+// ═══════════════════════════════════════════════════
+// REAL-TIME UPDATE LOOP
+// ═══════════════════════════════════════════════════
+function liveUpdate() {
+  simulateLiveRates();
+  renderRates();
+  buildTicker();
+  // Auto-refresh current conversion if set
+  const from = document.getElementById('fromCurrency').value;
+  const to   = document.getElementById('toCurrency').value;
+  const amt  = parseFloat(document.getElementById('amountInput').value) || 0;
+  if (amt > 0) {
+    const result = getRate(from, to) * amt;
+    const sym = CURRENCIES.find(c => c.code === to)?.symbol || '';
+    document.getElementById('resultInput').value = result.toFixed(4);
+    const rateEl = document.getElementById('resultRate');
+    if (rateEl.textContent !== 'Select currencies to convert') {
+      rateEl.innerHTML = `1 ${from} = <span>${getRate(from,to).toFixed(6)}</span> ${to} &nbsp;|&nbsp; Updated live`;
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════════════
+function bindEvents() {
+  document.getElementById('convertBtn').addEventListener('click', triggerConvert);
+
+  document.getElementById('swapBtn').addEventListener('click', () => {
+    const from = document.getElementById('fromCurrency');
+    const to   = document.getElementById('toCurrency');
+    [from.value, to.value] = [to.value, from.value];
+    logConsole('info', `Currencies swapped: ${to.value} ↔ ${from.value}`);
+    triggerConvert();
+  });
+
+  document.getElementById('amountInput').addEventListener('input', () => {
+    const from   = document.getElementById('fromCurrency').value;
+    const to     = document.getElementById('toCurrency').value;
+    const amount = parseFloat(document.getElementById('amountInput').value) || 0;
+    if (amount > 0) {
+      const result = getRate(from, to) * amount;
+      document.getElementById('resultInput').value = result.toFixed(4);
+    }
+  });
+
+  document.getElementById('rateSearch').addEventListener('input', e => {
+    searchQuery = e.target.value.trim();
+    renderRates();
+  });
+
+  document.querySelectorAll('.sort-btn[data-sort]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentSortMode = btn.dataset.sort;
+      document.querySelectorAll('.sort-btn[data-sort]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderRates();
+    });
+  });
+
+  document.getElementById('clearHistory').addEventListener('click', () => {
+    historyStack.data  = [];
+    historyStack.top   = -1;
+    totalConversions   = 0;
+    logConsole('stack', 'Stack CLEARED — all elements removed');
+    renderHistory();
+    updateStats();
+  });
+
+  document.getElementById('qAddBtn').addEventListener('click', addToQueue);
+  document.getElementById('qProcessBtn').addEventListener('click', processQueue);
+
+  document.getElementById('consoleClear').addEventListener('click', () => {
+    document.getElementById('consoleBody').innerHTML = '';
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// BOOT SEQUENCE
+// ═══════════════════════════════════════════════════
+function boot() {
+  logConsole('info', '═══ FX Live — Currency Converter BOOTING ═══');
+  logConsole('info', 'FWD: HTML5 + CSS3 + JavaScript ES6+ initialized');
+  logConsole('dsa',  'DSA Module loaded: Stack | Queue | BubbleSort | SelectionSort | MergeSort | BinarySearch | LinearSearch');
+  logConsole('dsa',  `Hash Map (CO4): LIVE_RATES{} — ${Object.keys(LIVE_RATES).length} key-value pairs initialized`);
+
+  simulateLiveRates();
+  populateSelects();
+  renderRates();
+  buildTicker();
+  updateStats();
+  updateClock();
+
+  logConsole('info', 'UI rendered — All components mounted');
+  logConsole('dsa',  'Demonstrating initial DSA operations...');
+
+  // Demo sort on boot
+  setTimeout(() => {
+    logConsole('sort', '── Demo: Bubble Sort on rate array ──');
+    bubbleSort(buildRatesArray().slice(0, 8));
+  }, 500);
+
+  setTimeout(() => {
+    logConsole('search', '── Demo: Binary Search for "INR" ──');
+    const sorted = selectionSort(buildRatesArray());
+    binarySearch(sorted, 'INR');
+  }, 900);
+
+  setTimeout(() => {
+    logConsole('search', '── Demo: Linear Search for "JPY" ──');
+    linearSearch(CURRENCIES, 'JPY');
+  }, 1200);
+
+  setTimeout(() => {
+    logConsole('info', '─── Ready. All DSA structures initialized ───');
+  }, 1500);
+
+  // Start live updates
+  setInterval(liveUpdate,  3000);
+  setInterval(updateClock, 1000);
+}
+
+// Run
+document.addEventListener('DOMContentLoaded', () => { bindEvents(); boot(); });
+</script>
+</body>
+</html>
